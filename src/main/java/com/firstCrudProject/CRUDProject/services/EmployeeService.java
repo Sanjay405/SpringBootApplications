@@ -58,12 +58,6 @@ public class EmployeeService {
         return modelMapper.map(updated, EmployeeDTO.class);
     }
 
-    public List<Employee> findHighestPaidEmp(Long salary){
-        if(salary>5000){
-
-        }
-        return employeeRepo.findTop5HighestPaidEmp(salary);
-    }
 
 
 
