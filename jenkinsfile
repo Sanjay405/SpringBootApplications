@@ -1,16 +1,11 @@
 pipeline {
     agent any
 
-    tools {
-        // This name must match the Maven installation name in:
-        // Manage Jenkins → Tools → Global Tool Configuration
-        maven 'maven_3_9_9'
-    }
-
     environment {
         APP_NAME       = "crud-project"
         IMAGE_NAME     = "crud-project-image"
         CONTAINER_NAME = "crud-project-container"
+        DOCKER_CMD     = "/usr/local/bin/docker"   // <--- change if needed
     }
 
     stages {
@@ -22,25 +17,21 @@ pipeline {
 
         stage('Build & Test (Maven)') {
             steps {
-                // Maven will be added to PATH by the 'tools' block
                 sh 'mvn clean test'
-                // Or if you prefer to build jar here:
-                // sh 'mvn clean package'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} ."
+                sh "${DOCKER_CMD} build -t ${IMAGE_NAME}:${BUILD_NUMBER} ."
             }
         }
 
         stage('Stop Old Container') {
             steps {
-                // ignore error if container doesn't exist
                 sh """
-                  docker ps -a -q --filter "name=${CONTAINER_NAME}" | grep . && \
-                    docker stop ${CONTAINER_NAME} && docker rm ${CONTAINER_NAME} || echo "No old container"
+                  ${DOCKER_CMD} ps -a -q --filter "name=${CONTAINER_NAME}" | grep . && \
+                    ${DOCKER_CMD} stop ${CONTAINER_NAME} && ${DOCKER_CMD} rm ${CONTAINER_NAME} || echo "No old container"
                 """
             }
         }
@@ -48,7 +39,7 @@ pipeline {
         stage('Run New Container') {
             steps {
                 sh """
-                  docker run -d \
+                  ${DOCKER_CMD} run -d \
                     --name ${CONTAINER_NAME} \
                     -p 8080:8080 \
                     ${IMAGE_NAME}:${BUILD_NUMBER}
