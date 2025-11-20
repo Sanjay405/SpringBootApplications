@@ -1,0 +1,50 @@
+pipeline {
+    agent any
+
+    environment {
+        APP_NAME    = "crud-project"
+        IMAGE_NAME  = "crud-project-image"
+        CONTAINER_NAME = "crud-project-container"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build & Test (Maven)') {
+            steps {
+                sh 'mvn clean test'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh "docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} ."
+            }
+        }
+
+        stage('Stop Old Container') {
+            steps {
+                // ignore error if container doesn't exist
+                sh """
+                  docker ps -a -q --filter "name=${CONTAINER_NAME}" | grep . && \
+                    docker stop ${CONTAINER_NAME} && docker rm ${CONTAINER_NAME} || echo "No old container"
+                """
+            }
+        }
+
+        stage('Run New Container') {
+            steps {
+                sh """
+                  docker run -d \
+                    --name ${CONTAINER_NAME} \
+                    -p 8080:8080 \
+                    ${IMAGE_NAME}:${BUILD_NUMBER}
+                """
+            }
+        }
+    }
+}
