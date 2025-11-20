@@ -9,7 +9,7 @@ COPY src ./src
 # Build jar (skip tests if you want faster pipeline)
 RUN mvn clean package -DskipTests
 
-# ---- Run stage ----
+# ---- Run stage ---
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 
