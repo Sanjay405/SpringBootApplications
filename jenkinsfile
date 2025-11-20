@@ -1,11 +1,23 @@
 pipeline {
     agent any
 
+    tools {
+        // This name must match Maven installation name in:
+        // Manage Jenkins -> Global Tool Configuration -> Maven
+        maven 'maven_3_9_9'
+    }
+
     environment {
         APP_NAME       = "crud-project"
         IMAGE_NAME     = "crud-project-image"
         CONTAINER_NAME = "crud-project-container"
-        DOCKER_CMD     = "/usr/local/bin/docker"   // <--- change if needed
+
+        // If you already fixed Docker via PATH or full path, keep that here.
+        // Example 1: using PATH (if docker is in /usr/local/bin)
+        PATH = "/usr/local/bin:/usr/bin:/bin"
+
+        // Or Example 2: if you used a DOCKER_CMD variable instead:
+        // DOCKER_CMD = "/usr/local/bin/docker"
     }
 
     stages {
@@ -17,33 +29,43 @@ pipeline {
 
         stage('Build & Test (Maven)') {
             steps {
+                // Maven from 'maven_3_9_9' will be on PATH now
                 sh 'mvn clean test'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh "${DOCKER_CMD} build -t ${IMAGE_NAME}:${BUILD_NUMBER} ."
+                // If you used PATH:
+                sh "docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} ."
+
+                // If you prefer DOCKER_CMD instead, use:
+                // sh "${DOCKER_CMD} build -t ${IMAGE_NAME}:${BUILD_NUMBER} ."
             }
         }
 
         stage('Stop Old Container') {
             steps {
                 sh """
-                  ${DOCKER_CMD} ps -a -q --filter "name=${CONTAINER_NAME}" | grep . && \
-                    ${DOCKER_CMD} stop ${CONTAINER_NAME} && ${DOCKER_CMD} rm ${CONTAINER_NAME} || echo "No old container"
+                  docker ps -a -q --filter "name=${CONTAINER_NAME}" | grep . && \
+                    docker stop ${CONTAINER_NAME} && docker rm ${CONTAINER_NAME} || echo "No old container"
                 """
+                // or if using DOCKER_CMD:
+                // ${DOCKER_CMD} ps -a -q --filter "name=${CONTAINER_NAME}" | grep . && \
+                //   ${DOCKER_CMD} stop ${CONTAINER_NAME} && ${DOCKER_CMD} rm ${CONTAINER_NAME} || echo "No old container"
             }
         }
 
         stage('Run New Container') {
             steps {
                 sh """
-                  ${DOCKER_CMD} run -d \
+                  docker run -d \
                     --name ${CONTAINER_NAME} \
                     -p 8080:8080 \
                     ${IMAGE_NAME}:${BUILD_NUMBER}
                 """
+                // or using DOCKER_CMD:
+                // ${DOCKER_CMD} run -d --name ${CONTAINER_NAME} -p 8080:8080 ${IMAGE_NAME}:${BUILD_NUMBER}
             }
         }
     }
